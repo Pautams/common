@@ -25,3 +25,4 @@ Route::post($route.'create_currency', $controller."createCurrency");
 Route::post($route.'get_currency', $controller."getCurrency");
 Route::post($route.'email_preverify', $controller."preVerifyEmail");
 Route::get($route.'test', $controller."test");
+// Route::post($route.'retrieveRecipients', $controller."retrieveRecipients");

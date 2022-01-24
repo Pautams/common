@@ -370,4 +370,15 @@ class PayloadController extends APIController
       $this->response['data'] = sizeof($res) > 0 ? $res : [];
       return $this->response();
     }
+
+    // public function retrieveRecipients(Request $request) {
+    //   $data = $request->all();
+    //   $recipients = Payload::where('account_id', '=', '$data[account_id]')->get();
+    //   if(sizeof($recipients > 0)){
+    //     for($i=0; $i < sizeof($recipients); $i++){
+    //       $item = $recipients[$i];
+    //       $recipients[$i]['recipients'] = json_decode($item['recipients']);
+    //     }
+    //   }
+    // }
 }
