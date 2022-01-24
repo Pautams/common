@@ -67,6 +67,8 @@ class CommentController extends APIController
           $this->response['data'][$i]['created_at_human'] = Carbon::createFromFormat('Y-m-d H:i:s', $result[$i]['created_at'])->copy()->tz($this->response['timezone'])->diffForHumans();
           $this->response['data'][$i]['new_reply_flag'] = false;
           $this->response['data'][$i]['images'] = app('Increment\Common\Payload\Http\PayloadController')->retrievePayloads('payload', 'comment_id', 'payload_value', $result[$i]['id']);
+          $this->response['data'][$i]['amen'] = app('App\Http\Controllers\ReactionController')->retrieveWithPayload('comment_id', '=', $result[$i]['id'], 'reaction', '=', 'amen');
+          $this->response['data'][$i]['love'] = app('App\Http\Controllers\ReactionController')->retrieveWithPayload('comment_id', '=', $result[$i]['id'], 'reaction', '=', 'love');
           $i++;
         }
       }

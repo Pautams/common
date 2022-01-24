@@ -11,6 +11,9 @@ use App\Jobs\Notifications;
 use App\Synqt;
 class NotificationController extends APIController
 {
+
+    public $cacheController = 'Increment\Common\Cache\Http\CacheController';
+
     function __construct(){
       if($this->checkAuthenticatedUser() == false){
         return $this->response();
@@ -76,27 +79,57 @@ class NotificationController extends APIController
 
     public function retrieveNew(Request $request){
       $data = $request->all();
-      $this->model = new Notification();
-      $this->retrieveDB($data);
-      $size = 0;
-      $flag = false;
-      $result = $this->response['data'];
-      if(sizeof($result) > 0){
-        $i = 0;
-        foreach ($result as $key) {
-          if($flag == false && $result[$i]['updated_at'] == null){
-            $size++;
-          }else if($flag == false && $result[$i]['updated_at'] != null){
-            $flag = true;
-          }
-          $result[$i] = $this->manageResultNew($result[$i], false);
-          $i++;
+      $accountId = null;
+      $limit = null;
+      $offset = null;
+
+      foreach ($data['condition'] as $key) {
+        if($key['column'] === 'to'){
+          $accountId = $key['value'];
         }
       }
-      return response()->json(array(
-        'data' => sizeof($result) > 0 ? $result : null,
-        'size' => $size
-      ));
+
+      if(isset($data['limit'])){
+        $limit = intval($data['limit']);
+      }
+
+
+      if(isset($data['offset'])){
+        $offset = intval($data['offset']);
+      }
+
+      $result = app($this->cacheController)->retrieve('devices_'.$accountId, $offset, $limit);
+
+      if(app($this->cacheController)->retrieveCondition($result, $offset) == true){
+        return response()->json($result);
+      }else{
+        $this->model = new Notification();
+        $this->retrieveDB($data);
+        $size = 0;
+        $flag = false;
+        $result = $this->response['data'];
+        if(sizeof($result) > 0){
+          $i = 0;
+          foreach ($result as $key) {
+            if($flag == false && $result[$i]['updated_at'] == null){
+              $size++;
+            }else if($flag == false && $result[$i]['updated_at'] != null){
+              $flag = true;
+            }
+            $result[$i] = $this->manageResultNew($result[$i], false);
+            $i++;
+          }
+        }
+        $response = array(
+          'data' => sizeof($result) > 0 ? $result : null,
+          'size' => $size
+        );
+
+        app($this->cacheController)->insert('notifications_'.$accountId, $response);
+
+        return response()->json($response);
+      }
+      
     }
 
     public function retrieveByRequest($id){
@@ -312,6 +345,7 @@ class NotificationController extends APIController
       $model->save();
       $result = Notification::where('id', '=', $model->id)->get();
       $this->manageResult($result[0], true);
+      app($this->cacheController)->delete('notifications_'.$parameter['to']);
       return true;
     }
 
@@ -326,7 +360,7 @@ class NotificationController extends APIController
       $model->updated_at = null;
       $model->save();
       $result = Notification::where('id', '=', $model->id)->get();
-
+      app($this->cacheController)->delete('notifications_'.$parameter['to']);
       $parameter['to'] = $device;
       $this->manageResult($result[0], true);
       return true;

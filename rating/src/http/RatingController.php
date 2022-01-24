@@ -5,8 +5,11 @@ namespace Increment\Common\Rating\Http;
 use Illuminate\Http\Request;
 use App\Http\Controllers\APIController;
 use Increment\Common\Rating\Models\Rating;
+
 class RatingController extends APIController
 {
+    public $cacheController = 'Increment\Common\Cache\Http\CacheController';
+
     function __construct(){
       if($this->checkAuthenticatedUser() == false){
         return $this->response();
@@ -37,6 +40,9 @@ class RatingController extends APIController
         $this->response['error']['status'] = 100;
       }else{
         $this->insertDB($data);
+
+        $key = 'ratings_'.$$data['payload'].'_'.$data['payload_value'];
+        app($this->cacheController)->delete($key);
       }
       return $this->response();
     }
@@ -85,24 +91,36 @@ class RatingController extends APIController
     }
 
     public function getRatingByPayload($payload, $payloadValue){
-      $rating = Rating::where('payload', '=', $payload)->where('payload_value', '=', $payloadValue)->get();
-      $avg = 0;
-      $totalRating = 0;
-      $size = sizeof($rating);
-      if(sizeof($rating) > 0){
-        $i = 0;
-        foreach ($rating as $key) {
-          $totalRating += intval($rating[$i]['value']);
-          $i++;
+      $key = 'ratings_'.$payload.'_'.$payloadValue;
+      $result = app($this->cacheController)->retrieve($key, null, null);
+
+      if(app($this->cacheController)->retrieveCondition($result, 0) == true){
+        return $result;
+      }else{
+        $rating = Rating::where('payload', '=', $payload)->where('payload_value', '=', $payloadValue)->get();
+        $avg = 0;
+        $totalRating = 0;
+        $size = sizeof($rating);
+        
+        if(sizeof($rating) > 0){
+          $i = 0;
+          foreach ($rating as $key) {
+            $totalRating += intval($rating[$i]['value']);
+            $i++;
+          }
         }
+
+        $avg = ($size > 0) ? floatval($totalRating / $size) : $totalRating;
+        $result =  array(
+          'total' => $totalRating,
+          'size'  => $size,
+          'avg'   => $avg,
+          'stars' => round($avg)
+        );
+
+        app($this->cacheController)->insert($key, $result);
+        return $result;
       }
-      $avg = ($size > 0) ? floatval($totalRating / $size) : $totalRating;
-      return array(
-        'total' => $totalRating,
-        'size'  => $size,
-        'avg'   => $avg,
-        'stars' => round($avg)
-      );
     }
 
     public function getRatingByPayload2($accountId, $payload, $payloadValue, $payload1, $payloadValue1){

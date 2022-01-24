@@ -19,6 +19,12 @@ class PayloadController extends APIController
       $this->notRequired = array('category');
     }
 
+    public function createByParams($data){
+      $this->model = new Payload();
+      $this->insertDB($data);
+      return $this->response['data'];
+    }
+
     public function uploadValidId(Request $request){
       $data = $request->all();
       $payloadValue = array();
@@ -176,4 +182,52 @@ class PayloadController extends APIController
       $this->response['data'] = sizeof($res) > 0 ? $res : [];
       return $this->response['data'];
     }
+
+    public function createsIndustry(Request $request){
+      $data = $request->all();
+      $con = $this->checkValidIndustry($data['account_id']);
+      $merchantController = 'Increment\Imarket\Merchant\Http\MerchantController';
+      if($con === false){
+        $this->model = new Payload();
+        $this->insertDB($data);
+        $var = array('industry' => $data['payload_value']);
+        app($merchantController)->updateByParams('account_id', $data['account_id'], array('addition_informations'=>$var));
+        return $this->response();
+      }else{
+        $result = Payload::where('account_id', '=', $data['account_id'])->update(array(
+          'payload_value' => $data['payload_value'],
+          'updated_at' => Carbon::now()
+       ));
+        $var = array('industry' => $data['payload_value']);
+        app($merchantController)->updateByParams('account_id', $data['account_id'], array('addition_informations'=>$var));
+        $this->response['data'] = $result;
+        return $this->response();
+      }
+    }
+
+    public function checkValidIndustry($accountId){
+      $payload = Payload::where('payload', '=', 'assigned_industry')
+            ->where('account_id', '=', $accountId)
+            ->get();
+      if(sizeof($payload) > 0){
+        return true;
+      }else{
+        return false;
+      }
+    }
+
+    public function retrieveStorePayments(Request $request){
+      $data = $request->all();
+      $result = Payload::where('account_id', '=', $data['account_id'])->where('payload', '=', 'Branch')->get();
+
+      if(sizeof($result) > 0){
+        for($i=0; $i < sizeof($result); $i++){
+          $item = $result[$i];
+          $result[$i]['payload_value'] = json_decode($item['payload_value']);
+        }
+      }
+      $this->response['data'] = $result;
+      return $this->response();
+    }
+    
 }

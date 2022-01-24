@@ -147,6 +147,30 @@ class ImageController extends APIController
       ));
     }
 
+    public function uploadBase64Array(Request $request){
+      $data = $request->all();
+      $date = Carbon::now()->toDateString();
+      $time = str_replace(':', '_',Carbon::now()->toTimeString());
+      $images = [];
+      foreach ($data['images'] as $key) {
+        $filename = $data['account_id'].'_'.$date.'_'.$key['file_url'];
+        $image = base64_decode($key['file_base64']);
+        Storage::disk('local')->put('images/'.$filename, $image);
+        $url = '/storage/image/'.$filename;
+        $params = array(
+          'account_id' => $data['account_id'],
+          'payload' => $data['payload'],
+          'payload_value' =>$data['payload_value'],
+          'category' => $url
+        );
+        $res = app('Increment\Common\Payload\Http\PayloadController')->createByParams($params);
+        $params['id'] = $res['data'];
+        array_push($images, $params);
+      }
+      $this->response['data'] = $images;
+      return $this->response();
+    }
+
     public function retrieveFeaturedPhotos($payload, $payload_value, $payload1, $payload_value1){
       $result = Image::where($payload, '=', $payload_value)->where($payload1, '=', $payload_value1)->where('deleted_at', '=', null)->get();
       if(sizeof($result) > 0) {

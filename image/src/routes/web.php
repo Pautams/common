@@ -4,6 +4,7 @@ $controller = 'Increment\Common\Image\Http\ImageController@';
 Route::post($route.'create', $controller."create");
 Route::post($route.'retrieve', $controller."retrieve");
 Route::post($route.'retrieve_with_category', $controller."retrieveWithCategory");
+Route::post($route.'upload_image64_array', $controller."uploadBase64Array");
 Route::post($route.'update', $controller."update");
 Route::post($route.'upload', $controller."upload");
 Route::post($route.'upload_base64', $controller."uploadBase64");

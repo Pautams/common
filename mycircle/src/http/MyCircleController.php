@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\EmailController;
 use Increment\Account\Models\AccountProfile;
 use Increment\Account\Models\AccountInformation;
+use Illuminate\Support\Facades\DB;
 use Mail;
 
 class MyCircleController extends APIController
@@ -161,37 +162,45 @@ class MyCircleController extends APIController
    {
       $data = $request->all();
       $i = 0;
-      $result = Account::where('id', '!=', $data['account_id'])->where('deleted_at', '=', null)->limit($data['limit'])->offset($data['offset'])->get();
-      foreach ($result as $keyAcc) {
-         $result[$i]['is_added'] = false;
-         $result[$i]['similar_connections'] = $this->retrieveOtherConnection($keyAcc['id'], $data['account_id']);
-         $temp = MyCircle::where('account', '=', $keyAcc['id'])->orWhere('account_id', '=', $keyAcc['id'])->where('deleted_at', '=', null)->get();
-         if (sizeof($temp) > 0) {
-            $mycircle = MyCircle::where('account', '=', $data['account_id'])->orWhere('account_id', '=', $data['account_id'])->where('deleted_at', '=', null)->get();
-            $j = 0;
-            foreach ($mycircle as $value) {
-               if ($value['account'] == $data['account_id'] || $value['account_id'] == $data['account_id']) {
-                  if ($result[$i]['id'] == $value['account'] || $result[$i]['id'] == $value['account_id']) {
-                     $result[$i]['is_added'] = true;
-                  }
-               } else {
-                  $result[$i]['is_added'] = false;
-               }
-               $j++;
-            }
-         }
-         $i++;
-      }
+      // $result = Account::where('id', '!=', $data['account_id'])->where('deleted_at', '=', null)->limit($data['limit'])->offset($data['offset'])->get();
+      $result = DB::table('accounts AS T1')
+      ->select('T1.id', 'T1.code', 'T1.username', 'T1.email', 'T1.account_type', 'T1.status')
+      ->leftJoin('merchants AS T2','T2.account_id','=','T1.id')
+      ->where('T1.id', '!=', $data['account_id'])
+      ->where('T1.deleted_at', '=', null)
+      ->limit($data['limit'])
+      ->offset($data['offset'])
+      ->whereNull('T2.account_id')->get();
       if (sizeof($result) > 0) {
-         $j = 0;
-         foreach ($result as $key) {
-            $result[$j]['status'] = $key['status'];
-            $result[$j]['account_id'] =  $result[$j]['id'];
-            $result[$j]['account'] = $this->retrieveDetails($result[$j]['id']);
-            $result[$j]['rating'] = app($this->ratingClass)->getRatingByPayload('profile',  $result[$j]['id']);
-            $j++;
-         }
-         $this->response['data'] = $result;
+        foreach ($result as $keyAcc) {
+          $result[$i]->is_added = false;
+          $result[$i]->similar_connections = $this->retrieveOtherConnection($keyAcc->id, $data['account_id']);
+          $temp = MyCircle::where('account', '=', $keyAcc->id)->orWhere('account_id', '=', $keyAcc->id)->where('deleted_at', '=', null)->get();
+          if (sizeof($temp) > 0) {
+             $mycircle = MyCircle::where('account', '=', $data['account_id'])->orWhere('account_id', '=', $data['account_id'])->where('deleted_at', '=', null)->get();
+             $j = 0;
+             foreach ($mycircle as $value) {
+                if ($value->account == $data['account_id'] || $value->account_id == $data['account_id']) {
+                   if ($result[$i]->id == $value->account || $result[$i]->id == $value->account_id) {
+                      $result[$i]->is_added = true;
+                   }
+                } else {
+                   $result[$i]->is_added= false;
+                }
+                $j++;
+             }
+          }
+          $i++;
+        }
+        $j = 0;
+        foreach ($result as $key) {
+          $result[$j]->status = $key->status;
+          $result[$j]->account_id =  $result[$j]->id;
+          $result[$j]->account = $this->retrieveDetails($result[$j]->id);
+          $result[$j]->rating = app($this->ratingClass)->getRatingByPayload('profile',  $result[$j]->id);
+          $j++;
+        }
+        $this->response['data'] = $result;
       }
       return $this->response();
    }

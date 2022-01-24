@@ -39,6 +39,7 @@ class TicketController extends APIController
         foreach ($result as $key) {
           // $result[$i]['created_at_human'] = Carbon::createFromFormat('Y-m-d H:i:s', $result[$i]['created_at'])->copy()->tz($this->response['timezone'])->format('F j, Y h:i A');
           $result[$i]['created_at_human'] = $result[$i]['created_at'];
+          $result[$i]['name'] = $this->retrieveNameOnly($key['account_id']);
           $result[$i]['assignTo'] = $this->retrieveAccountDetails($result[$i]['assigned_to']);
           $i++;
         }
